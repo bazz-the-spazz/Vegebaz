@@ -8,6 +8,13 @@
 
 get.indicator.value <- function(data, corrected.names, value, weighted=TRUE, source, na.rm=TRUE, method="mean", socio=F, propose.alternatives=T, propose.alternatives.full=F, stetigkeit=FALSE, diversities=F){
 
+	# Check if Latin in source
+	if(!("Latin" %in% names(source))){
+		if(("TaxonConcept" %in% names(source))){ source$Latin <- source$TaxonConcept} else{ # The dataframe of dengler has the variable TaxonConcep which is the Latin name of the species
+			warning( paste('Latin is not in source!', sep=""), immediate. = F, call. = TRUE)
+		}
+	}
+
 
 	# Check if value is in the source
 	if(!(value %in% names(source))) warning( paste('"', value, '" is not in source!', sep=""), immediate. = F, call. = TRUE)

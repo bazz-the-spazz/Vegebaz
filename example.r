@@ -20,17 +20,22 @@ vegedaz21 <- read.vegedaz.data(path)
 
 
 # 1.2 get data from Vegedaz Beta Dez 24
-# read data from Vegedaz 2023 (Landolt and Eunis)
+# read data from Vegedaz 2023 (Landolt and Eunis(Dengler et al 2023))
 source("read_data_from_Vegedaz_beta_dez_24.r")
 path=("./DB/") # The path should lead to the 'DB' folder in the 'VegedazQtrelease'
 vegedaz23 <- read.vegedaz23.data(path = path)
 
-
 # 1.3
+# get the data from Dengler etal 2023 (Ecological Indicator Values for Europe (EIVE) 1.0) https://vcs.pensoft.net/article/98324/
+# 	supplementary material 8
+require(openxlsx) # dengler <- read.xlsx("vegetation_classification_and_survey-004-007-g008.xlsx", sheet=2) # From locally saved copy1dengler <- read.xlsx("https://vcs.pensoft.net/article/98324/download/suppl/38/", sheet = 2) # Directly from the Net
+dengler$Latin <- dengler$TaxonConcept
+
+.4
 # for Veg (Flora Helvetica 2014), extract the Zip file and put the file "Zeigerliste.txt" into your work directory.
 floraH <- getVegData(path="")
 
-# 1.4
+# 1.5
 ## choose your data source to proceed
 source <- vegedaz23$eunis   # the options are 'vegedaz21$landolt', 'vegedaz21$indicativa' from Vegedaz21, 'vegedaz23$landolt' or 'vegedaz23$eunis, or 'floraH' from Veg
 source <- vegedaz21$indicativa
@@ -65,8 +70,8 @@ corrected.names
 indi <- get.indicator.value(
 	data=d,
 	corrected.names = corrected.names,
-	value = "Temperaturzahl",
-	weighted = T,
+	value = "EIV
+emperaturzahl	weighted = T,
 	source = source,
 	na.rm = T,
 	propose.alternatives = T,
