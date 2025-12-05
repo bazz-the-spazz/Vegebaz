@@ -64,13 +64,19 @@ species <- c("Daucus carota",  "Lathyrus pratensis", "Scorzoneroides autumnalis"
 d <- data.frame(species=species, plotA= runif(length(species)), plotB= runif(length(species)), plotC= runif(length(species)))
 d
 
+species <- c("Arabis turrita", "Brachypodium pinnatum aggr.", "Bromus erectus", "Calamintha menthifolia", "Carex humilis", "Celtis australis", "Cornus mas", "Daphne laureola", "Fraxinus ornus", "Hippocrepis emerus", "Juniperus communis", "Ligustrum vulgare", "Origanum vulgare", "Ostrya carpinifolia", "Quercus pubescens", "Saponaria ocymoides", "Teucrium chamaedrys")
+v <- c("0.5", "4.0", "0.6", "0.4", "10.0", "4.5", "3.5", "1.0", "22.0", "17.5", "0.9", "0.8", "1.5", "54.5", "13.0", "3.5", "4.5")
+d <- data.frame(species=species, plotA= v, plotB= runif(length(species)), plotC= runif(length(species)))
+d
+
+
 # 2.2 transpose the data.frame for the analyses (species as columns and plots as rows)
 d <- transpose.data(data = d)
 rownames(d) <- d[,1]  # plots as rownames
 d <- d[,-1]						# Remove plot column
 d
 # introduce zeros
-for( i in 1:3) d[sample(nrow(d), 1), sample(ncol(d), 1)] <- 0
+# for( i in 1:3) d[sample(nrow(d), 1), sample(ncol(d), 1)] <- 0
 
 # 3.
 # Use the choose.name()-function to correct the species names according to the chosen source
