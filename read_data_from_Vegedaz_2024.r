@@ -1,7 +1,7 @@
 ## Get data from vegedaz23 (Beta-Version vom Dez 2023)
 # path should lead to the DB folder in the VegedazQtrelease directory
 
-read.vegedaz23.data <- function(path){
+read.vegedaz24 <- function(path){
 
 	artlist <- read.delim(paste(path,"SpeciesListCH.txt", sep=""), sep = "@", header = F)
 	## variable names are specified in the first rows
