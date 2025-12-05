@@ -6,7 +6,7 @@
 
 
 
-get.indicator.value <- function(data, corrected.names, value, weighted=TRUE, source, na.rm=TRUE, method="mean", socio=F, propose.alternatives=T, propose.alternatives.full=F, stetigkeit=FALSE, diversities=F){
+get.indicator.value <- function(data, corrected.names, value, weighted="sqrt", source, na.rm=TRUE, method="mean", propose.alternatives=T, propose.alternatives.full=F, diversities=F, sozio=NULL, choose.names.sozz=TRUE){
 
 	# Check if Latin in source
 	if(!("Latin" %in% names(source))){
@@ -118,65 +118,6 @@ get.indicator.value <- function(data, corrected.names, value, weighted=TRUE, sou
 
 		r2 <- data.frame(species=names(data), value=source)
 		if(!identical(names(data), N)) r2$used.species <- N # if you used alternatives, report them
-
-		# for sozio
-		cols <- c("Pflanzengesellschaft_1_txt", "Pflanzengesellschaft_2_txt", "Pflanzengesellschaft_3_txt")
-		if(unique(cols %in% names(source.bak))==F) socio <- F
-
-		sozz <- function(nam, wheight, data=source.bak){
-			# Function to look-up which Plant-Society is the most likely
-			k <- as.character(as.matrix(data[data$Latin %in% nam, cols])) # all mentioned societies
-			su <- sort(unique(k)) # unique societies
-			D <- data.frame(Gesellschaft=su, Frequency=rep(0, length(su)))
-			for(i in D$Gesellschaft){
-				D$Frequency[D$Gesellschaft==i] <- length(which(k == i))  # look up the frequencies
-			}
-
-			D <- D[D$Gesellschaft!="",] # ignore those with no information
-
-			if(nrow(D)>0){ # if there are no data for the community skip the rest
-				#wheight the frequency by abundance
-				if(!missing(wheight)){
-					D$Frequency.w <- 0
-
-					names(wheight) <- nam
-					for(i in nam[which(duplicated(nam))]) {
-						wheight[,which(names(wheight)==i)[1]] <- max(wheight[,names(wheight)==i])
-						wheight <- wheight[,-which(names(wheight)==i)[2]]
-					}
-					wheight <- as.data.frame(t(wheight))
-					nam <- unique(nam)
-
-					for(i in nam){
-						h <- as.character(t(data[data$Latin==i, cols]))
-						h <- h[h!=""]
-						for(j in h){
-							D$Frequency.w[D$Gesellschaft==j] <- D$Frequency.w[D$Gesellschaft==j] + D[D$Gesellschaft==j, "Frequency"]*wheight[i,1]
-						}
-					}
-					D$Frequency.old <- D$Frequency
-					D$Frequency <- D$Frequency.w
-					D$Frequency.w <- NULL
-				}
-
-				# If there is a tie for the most frequent society, choose the one that is highest in priority
-				if(length(which(D$Frequency==max(D$Frequency))) >1){
-					Favourites <- data.frame(name=D$Gesellschaft[D$Frequency==max(D$Frequency)], prio1=NA, prio2=NA, prio3=NA)
-					rownames(Favourites) <- Favourites$name
-					ddd <- data[data$Latin %in% nam, cols]
-					for(i in Favourites$name){
-						Favourites[i, "prio1"] <- length(which(ddd$Pflanzengesellschaft_1_txt==i))*2 #give a bonus to the highest priority
-						Favourites[i, "prio2"] <- length(which(ddd$Pflanzengesellschaft_2_txt==i))
-						Favourites[i, "prio3"] <- length(which(ddd$Pflanzengesellschaft_3_txt==i))*.5 #give a malus to the highest priority
-					}
-					Favourites$total <- Favourites$prio1+Favourites$prio2+Favourites$prio3 # total the bonuses
-					for(i in Favourites$name) D[D$Gesellschaft==i, "Frequency"] <- D[D$Gesellschaft==i, "Frequency"] + Favourites[i, "total"]
-				}
-				D <- D[order(D$Frequency, decreasing = T),] # order
-
-				return(D)
-			} else return(data.frame(Gesellschaft="", Frequency=0, Frequency.w=0))
-		}
 
 		## Function to calculate diversities
 		diversitee <- function(x, q, margin=1, effective=TRUE, na.rm=TRUE, se=F, allow.incorrect.beta=FALSE){
@@ -299,19 +240,62 @@ get.indicator.value <- function(data, corrected.names, value, weighted=TRUE, sou
 			}
 		}
 
-
-
+	if(is.data.frame(sozio)){
+		sozfun <- function(d, sozz, newname=choose.names.sozz){ # The sozfun-function adds up the values of but doubles them when the species is more than 10% in relative abundance
+			sp <- names(d)[names(d) %in% rownames(sozio)]
+			cat(paste(c("\n These species are in the Sozio data\n\n", sp, "\n\n"), collapse = " : "))
+			
+			if(newname){
+				nsp <- names(d)[!(names(d) %in% rownames(sozio))]
+				tmp <- sozz
+				tmp$Latin <- rownames(sozz)
+				x  <- choose.name(names = nsp, data = tmp)
+				translation <- data.frame(original_name=nsp, new_name=x)
+				names(d)[!(names(d) %in% rownames(sozio))] <- x
+				sp <- names(d)[names(d) %in% rownames(sozio)]
+				cat(paste(c("\n These species are now in the Sozio data\n\n", sp, "\n\n"), collapse = " : "))
+			} else translation <- "no additional Translation"
+			
+			
+			d <- d/rowSums(d, na.rm = T) # get relative abundance
+			l <- list()
+			for(i in rownames(d)){ # loop for all plots
+				l[[i]] <- sozio[0,]
+				if(sum(d[i,sp], na.rm=T)>0){
+					for(j in sp){ # loop for all species in plot
+						if(d[i,j]>0.1) {   # is species more than 10%
+							l[[i]] <- rbind(l[[i]], sozio[j,]*2) 
+						} else {
+							if(d[i,j]>0) l[[i]] <- rbind(l[[i]], sozio[j,]) 
+						}
+					}
+					x <- data.frame(TypoCH = names(colSums(l[[i]], na.rm = T)), score=(colSums(l[[i]], na.rm = T)))
+					x <- x[order(x$score, decreasing = T),]
+					x <- x[x$score>0,]
+					rownames(x) <- NULL
+					l[[i]] <- x } else 					l[[i]] <- "no species in indicator list"
+			}
+			return(list(sozz=l, translation=translation))
+		}
+		sozR <- sozfun(d = d, sozz = sozio)
+		# sozR
+	}
+	
 
 
 		if(do.calculations){
-			if(weighted) {   # when the weighted values are needed, make that plots add up to 1. Else make the data presence absence.
+			if(weighted=="normal" | weighted=="sqrt") {   # when the weighted values are needed, make that plots add up to 1. Else make the data presence absence.
 				data.w <- data/rowSums(data, na.rm = T) # wheighted
 				data.w2 <- data/rowSums(data[,which(!is.na(source))], na.rm = T)  # wheighted but ignore plants without Indicator value
 				data.w2[, is.na(source)] <- NA
 				data <- data.w2
+				if(weighted=="sqrt") data <- sqrt(data.w2)
+				weighted <- TRUE
+				sqrtttt <- TRUE
 			}  else {
 				data[data>0 & !is.na(data)] <- 1
 				data[data==0 | is.na(data)] <- NA
+				weighted <- FALSE
 			}
 			R <- as.numeric()
 			D <- as.character()
@@ -322,28 +306,13 @@ get.indicator.value <- function(data, corrected.names, value, weighted=TRUE, sou
 				if(method=="sd"){ # if standard deviation is chosen
 					if(weighted) R[i] <- sd(t(data[i,])*source,na.rm=na.rm) else R[i] <- sd(t(data[i,])*source,na.rm=na.rm)
 				}
-				if(socio & method=="mean"){
-					if(weighted) x <-sozz(nam = N[t(data.w[i,])>0], wheight=(data.w[i,t(data.w[i,])>0]), data = source.bak)
-					if(!weighted) x <- sozz(nam = N[t(data.w[i,])>0], data = source.bak)
-					D[i] <- paste(x[x$Frequency==max(x$Frequency),1], collapse = "; ")
-				}
 			}
 
 			names(R) <-  rownames(data)
-			if(socio & method=="mean") names(D) <- rownames(data)
 
 
+			Return <- (list(value=paste(ifelse(weighted, ifelse(sqrtttt, "sqrt weighted", "weighted"), ""), method, value), plots=R, species=r2))
 
-			Return <- (list(value=paste(ifelse(weighted, "weighted", ""), method, value), plots=R, species=r2))
-			if(socio & method=="mean") Return <- append(Return, list(common.Pflanzengesellschaft=D))
-
-			if(stetigkeit & socio){
-				dd <- data
-				dd[is.na(dd)] <- 0
-				dd[dd>0] <- 1
-				stetigkeit <- colSums(dd)/nrow(dd)
-				Return <- append(Return, list(stetigkeit=stetigkeit))
-			}
 
 		} else   Return <- (list(value=value, species=r2))
 
@@ -356,7 +325,7 @@ get.indicator.value <- function(data, corrected.names, value, weighted=TRUE, sou
 			}
 		}
 
-
+		if(is.data.frame(sozio)){ Return <- append(Return, sozR) }
 
 		return(Return)
 }
